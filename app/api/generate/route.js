@@ -13,7 +13,11 @@ const MAX_DOC_CHARS = 150_000;
 
 let client;
 function getClient() {
-  if (!client) client = new Anthropic();
+  if (!client) {
+    // Personal / unscoped keys must name the workspace they bill to.
+    const ws = process.env.ANTHROPIC_WORKSPACE_ID;
+    client = new Anthropic(ws ? { defaultHeaders: { "anthropic-workspace-id": ws } } : {});
+  }
   return client;
 }
 
