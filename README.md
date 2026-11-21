@@ -33,7 +33,7 @@ npm run dev                  # http://localhost:3000
 ## How to sell it
 The simplest setup needs no database:
 1. Create a product on Gumroad, Lemon Squeezy or a Stripe Payment Link.
-2. Put its URL in `NEXT_PUBLIC_CHECKOUT_URL` and set `NEXT_PUBLIC_PRICE`.
+2. Create a monthly and an annual plan. Put their links in `NEXT_PUBLIC_CHECKOUT_URL_MONTHLY` / `NEXT_PUBLIC_CHECKOUT_URL_ANNUAL` and set `NEXT_PUBLIC_PRICE_MONTHLY` / `NEXT_PUBLIC_PRICE_ANNUAL` (defaults: $29/mo, $249/yr).
 3. Generate access codes, add them to `ACCESS_CODES` (comma-separated) and deliver one per customer in the purchase email. Remove a code to revoke access.
 
 Every generation costs you Anthropic API credit, so **never deploy publicly without `ACCESS_CODES`**. `RATE_LIMIT_PER_HOUR` caps usage per code.
