@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 
 // GET: does this deployment require an access code?
 export async function GET() {
-  return Response.json({ required: accessRequired, checkoutUrl: process.env.NEXT_PUBLIC_CHECKOUT_URL || null });
+  return Response.json({ required: accessRequired, checkoutUrl: "/#pricing" });
 }
 
 // POST { code }: validate a code.
