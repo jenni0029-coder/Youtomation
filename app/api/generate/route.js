@@ -29,11 +29,6 @@ export async function POST(request) {
   const code = request.headers.get("x-access-code") || "";
   if (accessRequired && !isValidCode(code)) return fail("Please enter a valid access code.", 401);
 
-  const limit = isOwnerCode(code) ? { ok: true, remaining: "unlimited" } : rateLimit(clientKey(request, code));
-  if (!limit.ok) {
-    return fail(`Hourly limit reached. Try again in ${Math.ceil(limit.retryAfter / 60)} min.`, 429, { "retry-after": String(limit.retryAfter) });
-  }
-
   let body;
   try {
     body = await request.json();
@@ -42,6 +37,13 @@ export async function POST(request) {
   }
   const { tool, input = {} } = body || {};
   if (!TOOLS.includes(tool)) return fail("Unknown tool.");
+
+  // Image tools cost more, so each scene counts as one generation.
+  const weight = tool === "stickman" ? Math.min(6, Math.max(1, Number(input.count) || 4)) : 1;
+  const limit = isOwnerCode(code) ? { ok: true, remaining: "unlimited" } : rateLimit(clientKey(request, code), weight);
+  if (!limit.ok) {
+    return fail(`Hourly limit reached. Try again in ${Math.ceil(limit.retryAfter / 60)} min.`, 429, { "retry-after": String(limit.retryAfter) });
+  }
 
   // Gather source material for reader tools.
   let source = {};
@@ -83,7 +85,7 @@ export async function POST(request) {
 
   const params = {
     model: MODEL,
-    max_tokens: 32000,
+    max_tokens: tool === "stickman" ? 64000 : 32000,
     system: prompt.system,
     messages: [{ role: "user", content: prompt.content }],
     output_config: { effort: EFFORT, ...(prompt.schema ? { format: { type: "json_schema", schema: prompt.schema } } : {}) },
