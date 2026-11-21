@@ -7,6 +7,25 @@ const PRICE_ANNUAL = process.env.NEXT_PUBLIC_PRICE_ANNUAL || "249";
 const CHECKOUT_MONTHLY = process.env.NEXT_PUBLIC_CHECKOUT_URL_MONTHLY || "/app";
 const CHECKOUT_ANNUAL = process.env.NEXT_PUBLIC_CHECKOUT_URL_ANNUAL || CHECKOUT_MONTHLY;
 const SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "";
+// Optional demo video: a YouTube (incl. unlisted) or Loom link. Shown under the hero.
+const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "";
+
+function demoEmbed(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    let id = "";
+    if (host === "youtu.be") id = u.pathname.slice(1);
+    else if (host.endsWith("youtube.com")) id = u.searchParams.get("v") || u.pathname.split("/").filter(Boolean).pop();
+    if (id && /^[\w-]{6,20}$/.test(id)) return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
+    if (host.endsWith("loom.com")) {
+      const lid = u.pathname.split("/").filter(Boolean).pop();
+      if (lid && /^[\w-]+$/.test(lid)) return `https://www.loom.com/embed/${lid}`;
+    }
+  } catch {}
+  return "";
+}
+const DEMO_EMBED = DEMO_URL ? demoEmbed(DEMO_URL) : "";
 
 const FEATURES = [
   ["✍️", "Word-for-word scripts", "Shorts, 10-minute and deep-dive scripts with hooks, B-roll cues and retention-optimised pacing."],
@@ -55,6 +74,21 @@ export default function Landing() {
           <a href="#features" className="lp-btn lp-btn-ghost">See features</a>
         </div>
       </section>
+
+      {DEMO_EMBED && (
+        <section className="lp" style={{ padding: "0 20px 40px" }}>
+          <div style={{ maxWidth: 820, margin: "0 auto", aspectRatio: "16 / 9", borderRadius: 18, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 20px 60px rgba(0,0,0,0.45)" }}>
+            <iframe
+              src={DEMO_EMBED}
+              title={`${NAME} demo`}
+              style={{ width: "100%", height: "100%", border: 0 }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+        </section>
+      )}
 
       <section id="features" className="lp" style={{ padding: "40px 20px" }}>
         <h2 style={{ textAlign: "center" }}>Everything a channel needs</h2>

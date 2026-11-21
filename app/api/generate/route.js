@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildPrompt, InputError, TOOLS } from "@/lib/prompts";
 import { fetchWebsite, fetchYouTube, htmlToText, SourceError } from "@/lib/sources";
-import { accessRequired, isValidCode, isOwnerCode, rateLimit, clientKey } from "@/lib/access";
+import { accessRequired, checkCode, isOwnerCode, rateLimit, clientKey } from "@/lib/access";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -27,7 +27,7 @@ export async function POST(request) {
   }
 
   const code = request.headers.get("x-access-code") || "";
-  if (accessRequired && !isValidCode(code)) return fail("Please enter a valid access code.", 401);
+  if (accessRequired && !(await checkCode(code))) return fail("Please enter a valid access code.", 401);
 
   const limit = isOwnerCode(code) ? { ok: true, remaining: "unlimited" } : rateLimit(clientKey(request, code));
   if (!limit.ok) {
