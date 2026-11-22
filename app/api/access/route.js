@@ -10,6 +10,6 @@ export async function GET() {
 // POST { code }: validate a code.
 export async function POST(request) {
   const { code } = await request.json().catch(() => ({}));
-  const valid = isValidCode(typeof code === "string" ? code : "");
+  const valid = await isValidCode(typeof code === "string" ? code : "");
   return Response.json({ valid }, { status: valid ? 200 : 401 });
 }

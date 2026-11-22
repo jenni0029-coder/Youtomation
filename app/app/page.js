@@ -1035,6 +1035,22 @@ function SettingsScreen({ onClose, accessRequired }) {
 // ---------------------------------------------------------------------------
 // ACCESS GATE
 // ---------------------------------------------------------------------------
+function WelcomeModal({ code, onClose }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 400, background: "#0f172a", border: "1.5px solid rgba(0,232,122,0.35)", borderRadius: 22, padding: 22, display: "flex", flexDirection: "column", gap: 14, textAlign: "center" }}>
+        <div style={{ fontSize: 38 }}>🎉</div>
+        <div style={{ fontSize: 20, fontWeight: 900 }}>You're in!</div>
+        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>Payment confirmed. This is your personal access code. <strong style={{ color: "#f1f5f9" }}>Save it</strong> — you'll need it to sign in on another phone or computer.</div>
+        <div style={{ padding: "14px 10px", borderRadius: 14, background: "rgba(255,255,255,0.06)", border: "1.5px dashed rgba(255,255,255,0.2)", fontFamily: "ui-monospace,monospace", fontSize: 17, fontWeight: 800, letterSpacing: 1, overflowWrap: "anywhere" }}>{code}</div>
+        <ActionButton onClick={async () => { if (await copyText(code)) { setCopied(true); setTimeout(() => setCopied(false), 1500); } }} grad="linear-gradient(135deg,#00e87a,#38bdf8)">{copied ? "✓ Copied" : "📋 Copy code"}</ActionButton>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>I've saved it — start creating →</button>
+      </div>
+    </div>
+  );
+}
+
 function AccessGate({ checkoutUrl, onUnlock }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -1143,9 +1159,18 @@ export default function App() {
   const [readerMode, setReaderMode] = useState("yt");
   const [overlay, setOverlay] = useState(null); // "library" | "settings" | null
   const [access, setAccess] = useState({ checked: false, required: false, unlocked: false, checkoutUrl: null });
+  const [welcomeCode, setWelcomeCode] = useState("");
 
   useEffect(() => {
     let alive = true;
+    // Arriving from a successful payment: /app#welcome=CODE
+    const m = /welcome=([^&]+)/.exec(window.location.hash || "");
+    if (m) {
+      const code = decodeURIComponent(m[1]);
+      store.setCode(code);
+      setWelcomeCode(code);
+      history.replaceState(null, "", window.location.pathname);
+    }
     fetch("/api/access")
       .then((r) => r.json())
       .then(async (d) => {
@@ -1184,6 +1209,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100dvh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column" }}>
       <div style={{ height: "env(safe-area-inset-top,0px)" }} />
+      {welcomeCode && <WelcomeModal code={welcomeCode} onClose={() => setWelcomeCode("")} />}
 
       {/* Header */}
       <header style={{ padding: "14px 18px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(8,13,26,0.97)", backdropFilter: "blur(20px)", position: "sticky", top: 0, zIndex: 50 }}>

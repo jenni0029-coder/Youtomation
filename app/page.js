@@ -1,11 +1,15 @@
 import Link from "next/link";
 import Pricing from "./Pricing";
+import { paystackEnabled } from "@/lib/paystack";
+
+export const dynamic = "force-dynamic";
 
 const NAME = process.env.NEXT_PUBLIC_APP_NAME || "AutoTubeAI";
 const PRICE_MONTHLY = process.env.NEXT_PUBLIC_PRICE_MONTHLY || "29";
 const PRICE_ANNUAL = process.env.NEXT_PUBLIC_PRICE_ANNUAL || "249";
 const CHECKOUT_MONTHLY = process.env.NEXT_PUBLIC_CHECKOUT_URL_MONTHLY || "/app";
 const CHECKOUT_ANNUAL = process.env.NEXT_PUBLIC_CHECKOUT_URL_ANNUAL || CHECKOUT_MONTHLY;
+const CURRENCY = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || "$";
 const SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "";
 
 const FEATURES = [
@@ -34,7 +38,8 @@ const FAQ = [
   ["Will it guarantee views or income?", "No tool can. AutoTubeAI makes you faster and more consistent — results depend on your content and niche."],
 ];
 
-export default function Landing() {
+export default function Landing({ searchParams }) {
+  const payment = searchParams && searchParams.payment;
   return (
     <div style={{ background: "radial-gradient(1200px 600px at 50% -200px, rgba(0,232,122,0.12), transparent), #080d1a", minHeight: "100vh" }}>
       <header className="lp" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px" }}>
@@ -51,7 +56,7 @@ export default function Landing() {
           {NAME} writes your scripts, titles, SEO and thumbnail ideas, plans your calendar, and breaks down any competitor video — all from your phone.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <a href="#pricing" className="lp-btn lp-btn-primary">Get started — from ${Math.round(Number(PRICE_ANNUAL) / 12)}/mo</a>
+          <a href="#pricing" className="lp-btn lp-btn-primary">Get started — from {CURRENCY}{Math.round(Number(PRICE_ANNUAL) / 12).toLocaleString("en-US")}/mo</a>
           <a href="#features" className="lp-btn lp-btn-ghost">See features</a>
         </div>
       </section>
@@ -84,7 +89,12 @@ export default function Landing() {
 
       <section id="pricing" className="lp" style={{ padding: "50px 20px", textAlign: "center" }}>
         <h2>Simple pricing</h2>
-        <Pricing monthly={PRICE_MONTHLY} annual={PRICE_ANNUAL} monthlyUrl={CHECKOUT_MONTHLY} annualUrl={CHECKOUT_ANNUAL} />
+        {payment && (
+          <div role="alert" style={{ maxWidth: 420, margin: "0 auto 18px", padding: "12px 14px", borderRadius: 14, background: "rgba(255,68,68,0.08)", border: "1.5px solid rgba(255,68,68,0.3)", color: "#fca5a5", fontSize: 14 }}>
+            Your payment wasn't completed{payment === "error" ? " (we couldn't confirm it)" : ""}. You haven't been charged for access — please try again{SUPPORT ? <> or email <a href={"mailto:" + SUPPORT}>{SUPPORT}</a></> : ""}.
+          </div>
+        )}
+        <Pricing monthly={PRICE_MONTHLY} annual={PRICE_ANNUAL} monthlyUrl={CHECKOUT_MONTHLY} annualUrl={CHECKOUT_ANNUAL} paystack={paystackEnabled} currency={CURRENCY} />
       </section>
 
       <section className="lp" style={{ padding: "50px 20px", maxWidth: 760 }}>
