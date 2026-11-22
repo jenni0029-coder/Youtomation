@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { runTool, parseJsonOutput, downloadText, copyText, slug, store } from "@/lib/client";
+import { sanitizeSvg } from "@/lib/svg";
 
 // ---------------------------------------------------------------------------
 // Static data
@@ -26,6 +27,7 @@ const NAV = [
 ];
 
 const CREATE_TOOLS = [
+  { id: "stickman",  icon: "🧍",  label: "Stickman", color: "#e2e8f0" },
   { id: "script",    icon: "✍️",  label: "Script",  color: "#00e87a" },
   { id: "titles",    icon: "🔥",  label: "Titles",  color: "#f59e0b" },
   { id: "seo",       icon: "🔍",  label: "SEO",     color: "#38bdf8" },
@@ -40,7 +42,7 @@ const READER_MODES = [
 ];
 
 const TOOL_NAMES = {
-  script: "Script", video: "Production plan", thumbnail: "Thumbnails", titles: "Titles", seo: "SEO pack",
+  stickman: "Stickman scenes", script: "Script", video: "Production plan", thumbnail: "Thumbnails", titles: "Titles", seo: "SEO pack",
   plan: "Content calendar", stats: "Channel report", doc: "Document", yt: "YouTube analysis", url: "Website analysis",
 };
 
@@ -78,19 +80,19 @@ function useGenerator(tool) {
 
   useEffect(() => () => ctrl.current && ctrl.current.abort(), []);
 
-  async function run(input, { title, stream = true } = {}) {
+  async function run(input, { title, stream = true, onChunk, meta } = {}) {
     if (ctrl.current) ctrl.current.abort();
     ctrl.current = new AbortController();
     setLoading(true); setError(""); setOutput(""); setSource(null);
     try {
       const { text, source: src } = await runTool(tool, input, {
         signal: ctrl.current.signal,
-        onChunk: stream ? setOutput : undefined,
+        onChunk: stream ? setOutput : onChunk,
       });
       setOutput(text);
       setSource(src);
       if (text.trim() && !text.trim().startsWith("⚠️")) {
-        saveToLibrary({ tool, title: title || (src && src.title) || TOOL_NAMES[tool], text });
+        saveToLibrary({ tool, title: title || (src && src.title) || TOOL_NAMES[tool], text, ...(meta || {}) });
       }
       return text;
     } catch (e) {
@@ -302,6 +304,136 @@ const onEnter = (fn) => (e) => { if (e.key === "Enter" && !e.nativeEvent.isCompo
 // ---------------------------------------------------------------------------
 // CREATE tools
 // ---------------------------------------------------------------------------
+const STICKMAN_SIZES = { landscape: [1920, 1080], portrait: [1080, 1920], square: [1080, 1080] };
+
+function svgDataUrl(svg) {
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+function parseScenes(text, format) {
+  const data = parseJsonOutput(text);
+  if (!data || !Array.isArray(data.scenes)) return null;
+  const [width, height] = STICKMAN_SIZES[format] || STICKMAN_SIZES.landscape;
+  return data.scenes
+    .map((sc) => ({ ...sc, svg: sanitizeSvg(sc.svg, { width, height }) }))
+    .filter((sc) => sc.svg);
+}
+
+async function downloadPng(svg, filename, [width, height]) {
+  const img = new Image();
+  img.src = svgDataUrl(svg);
+  await img.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+  const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename + ".png";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function SceneGallery({ scenes, format, name }) {
+  const [copied, setCopied] = useState(false);
+  const size = STICKMAN_SIZES[format] || STICKMAN_SIZES.landscape;
+  const portrait = format === "portrait";
+  async function downloadAll() {
+    for (let i = 0; i < scenes.length; i++) {
+      await downloadPng(scenes[i].svg, slug(name) + "-scene-" + (i + 1), size);
+      await new Promise((r) => setTimeout(r, 350));
+    }
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <SmallButton active={copied} onClick={async () => { await copyText(scenes.map((sc, i) => "Scene " + (i + 1) + ": " + sc.narration).join("\n\n")); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? "✓ Copied" : "Copy narration"}</SmallButton>
+        <SmallButton onClick={downloadAll}>⬇ Download all (PNG)</SmallButton>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: portrait ? "1fr 1fr" : "1fr", gap: 10 }}>
+        {scenes.map((sc, i) => (
+          <div key={i} style={{ borderRadius: 16, overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={svgDataUrl(sc.svg)} alt={sc.title} style={{ width: "100%", display: "block", aspectRatio: size[0] + "/" + size[1], background: "#fff" }} />
+            <div style={{ padding: "10px 12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>{i + 1}. {sc.title}</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <SmallButton onClick={() => downloadPng(sc.svg, slug(name) + "-scene-" + (i + 1), size)}>PNG</SmallButton>
+                  <SmallButton onClick={() => { const blob = new Blob([sc.svg], { type: "image/svg+xml" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = slug(name) + "-scene-" + (i + 1) + ".svg"; a.click(); }}>SVG</SmallButton>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, lineHeight: 1.5 }}>{sc.narration}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StickmanTool() {
+  const [prompt, setPrompt] = useState("");
+  const [count, setCount] = useState(4);
+  const [format, setFormat] = useState("landscape");
+  const [theme, setTheme] = useState("light");
+  const [captions, setCaptions] = useState(true);
+  const [scenes, setScenes] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const g = useGenerator("stickman");
+  const ready = prompt.trim().length > 3;
+
+  async function go() {
+    if (!ready || g.loading) return;
+    setScenes(null); setProgress(0);
+    const text = await g.run(
+      { prompt, count, format, theme, captions },
+      { title: "Stickman: " + prompt.slice(0, 60), stream: false, onChunk: (t) => setProgress((t.match(/"svg"\s*:/g) || []).length), meta: { format } }
+    );
+    if (text == null) return;
+    const parsed = parseScenes(text, format);
+    if (parsed && parsed.length) { setScenes(parsed); g.setOutput(""); }
+  }
+
+  return (
+    <Stack>
+      <div style={{ fontSize: 12.5, color: "#94a3b8", lineHeight: 1.6 }}>Turn a script or idea into consistent stickman scenes for faceless videos. Download as PNG for your editor.</div>
+      <div>
+        <SectionLabel>Script, idea or scene description</SectionLabel>
+        <TextArea value={prompt} onChange={(e) => setPrompt(e.target.value)} maxLength={6000} placeholder={"e.g. A guy checks his bank account, panics, then starts budgeting and ends up relaxed on a beach.\n\nOr paste a section of your script."} />
+      </div>
+      <div>
+        <SectionLabel>Number of scenes</SectionLabel>
+        <SegmentedPicker value={String(count)} onChange={(v) => setCount(Number(v))} activeColor="#e2e8f0" options={[1, 2, 3, 4, 5, 6].map((n) => ({ id: String(n), label: String(n) }))} />
+      </div>
+      <div>
+        <SectionLabel>Format</SectionLabel>
+        <SegmentedPicker value={format} onChange={setFormat} activeColor="#e2e8f0" options={[{ id: "landscape", label: "🖥 16:9 Video" }, { id: "portrait", label: "📱 9:16 Short" }, { id: "square", label: "⬛ 1:1" }]} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <SectionLabel>Background</SectionLabel>
+          <SegmentedPicker value={theme} onChange={setTheme} activeColor="#e2e8f0" options={[{ id: "light", label: "⚪ White" }, { id: "dark", label: "⚫ Dark" }]} />
+        </div>
+        <div>
+          <SectionLabel>Captions</SectionLabel>
+          <SegmentedPicker value={captions ? "on" : "off"} onChange={(v) => setCaptions(v === "on")} activeColor="#e2e8f0" options={[{ id: "on", label: "On" }, { id: "off", label: "Off" }]} />
+        </div>
+      </div>
+      <ActionButton onClick={go} loading={g.loading} onStop={g.stop} disabled={!ready} grad="linear-gradient(135deg,#64748b,#e2e8f0)">🧍 Draw {count} Scene{count > 1 ? "s" : ""}</ActionButton>
+      {g.loading && (
+        <div style={{ fontSize: 12.5, color: "#94a3b8", textAlign: "center" }}>
+          {progress === 0 ? "Planning scenes…" : "Drawing scene " + Math.min(progress, count) + " of " + count + "…"} This takes about 20–60 seconds.
+        </div>
+      )}
+      <ErrorBox error={g.error} />
+      {g.output && !scenes && !g.loading && <ErrorBox error={g.output.includes("⚠️") ? g.output.trim() : "The drawing didn't come out right. Please try again."} />}
+      {scenes && <SceneGallery scenes={scenes} format={format} name={prompt.slice(0, 40)} />}
+    </Stack>
+  );
+}
+
 function ScriptTool() {
   const [niche, setNiche] = useState("");
   const [topic, setTopic] = useState("");
@@ -831,7 +963,9 @@ function LibraryScreen({ onClose }) {
           <div style={{ fontSize: 15, fontWeight: 800 }}>{item.title}</div>
           <div style={{ fontSize: 11, color: "#64748b" }}>{TOOL_NAMES[item.tool]} · {new Date(item.at).toLocaleString()}</div>
         </div>
-        <OutputBox text={item.tool === "titles" || item.tool === "seo" ? prettyJson(item.text) : item.text} filename={item.title} />
+        {item.tool === "stickman"
+          ? <SceneGallery scenes={parseScenes(item.text, item.format) || []} format={item.format} name={item.title} />
+          : <OutputBox text={item.tool === "titles" || item.tool === "seo" ? prettyJson(item.text) : item.text} filename={item.title} />}
       </Stack>
     );
   }
@@ -941,6 +1075,7 @@ function HomeScreen({ onNav, onLibrary }) {
   const [channel] = useChannel();
   const lib = useLibrary();
   const QUICK = [
+    { icon: "🧍", label: "Stickman Scenes", sub: "Images for faceless videos", sec: "create", sub2: "stickman", color: "#e2e8f0", wide: true },
     { icon: "✍️", label: "Write Script",  sub: "Word-for-word scripts", sec: "create", sub2: "script", color: "#00e87a" },
     { icon: "🔥", label: "Viral Titles",  sub: "10 title ideas fast",   sec: "create", sub2: "titles", color: "#f59e0b" },
     { icon: "▶️",  label: "Analyze Video", sub: "Learn from any video",  sec: "reader", sub2: "yt",     color: "#ff4444" },
@@ -971,7 +1106,7 @@ function HomeScreen({ onNav, onLibrary }) {
       <SectionLabel>Quick Actions</SectionLabel>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 22 }}>
         {QUICK.map((item, i) => (
-          <button key={i} onClick={() => onNav(item.sec, item.sub2)} style={{ padding: "16px 14px", borderRadius: 18, background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(255,255,255,0.08)", textAlign: "left", cursor: "pointer", animation: "fadeUp " + (0.15 + i * 0.07) + "s ease", color: "#f1f5f9" }}>
+          <button key={i} onClick={() => onNav(item.sec, item.sub2)} style={{ gridColumn: item.wide ? "span 2" : undefined, padding: "16px 14px", borderRadius: 18, background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(255,255,255,0.08)", textAlign: "left", cursor: "pointer", animation: "fadeUp " + (0.15 + i * 0.07) + "s ease", color: "#f1f5f9" }}>
             <div style={{ fontSize: 24, marginBottom: 6 }}>{item.icon}</div>
             <div style={{ fontSize: 13, fontWeight: 800 }}>{item.label}</div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{item.sub}</div>
@@ -1039,7 +1174,7 @@ export default function App() {
   if (access.required && !access.unlocked) return <AccessGate checkoutUrl={access.checkoutUrl} onUnlock={() => setAccess({ ...access, unlocked: true })} />;
 
   const activeSec = NAV.find((s) => s.id === section);
-  const createMap = { script: <ScriptTool />, video: <VideoTool />, thumbnail: <ThumbnailTool />, titles: <TitlesTool />, seo: <SEOTool /> };
+  const createMap = { stickman: <StickmanTool />, script: <ScriptTool />, video: <VideoTool />, thumbnail: <ThumbnailTool />, titles: <TitlesTool />, seo: <SEOTool /> };
   const readerMap = { doc: <DocReader />, yt: <YouTubeReader />, url: <WebsiteReader /> };
   const headerBtn = { width: 34, height: 34, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", fontSize: 15, cursor: "pointer" };
 
