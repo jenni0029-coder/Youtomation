@@ -30,7 +30,13 @@ npm run dev                  # http://localhost:3000
 2. Add the environment variables from `.env.example` — at minimum `ANTHROPIC_API_KEY` and `ACCESS_CODES`.
 3. Deploy. The `/api/generate` route needs a Node runtime with up to 300 s duration (set in the route).
 
-## How to sell it
+## How to sell it (Paystack — automatic)
+1. Create a Paystack account and complete business activation; request **international payments** (and USD, if you're in Nigeria or Kenya).
+2. In Paystack → Products/Plans, create a **monthly** and an **annual** plan. Copy each plan code (`PLN_...`).
+3. In Vercel set `PAYSTACK_SECRET_KEY`, `PAYSTACK_PLAN_MONTHLY`, `PAYSTACK_PLAN_ANNUAL`, and set `NEXT_PUBLIC_PRICE_*` / `NEXT_PUBLIC_CURRENCY_SYMBOL` to match the plans. Redeploy.
+4. Customers pay on the landing page, are sent to `/app` with their personal code, and keep access while their subscription is active (cancelled = access ends after the paid period).
+
+## How to sell it (manual codes)
 The simplest setup needs no database:
 1. Create a product on Gumroad, Lemon Squeezy or a Stripe Payment Link.
 2. Create a monthly and an annual plan. Put their links in `NEXT_PUBLIC_CHECKOUT_URL_MONTHLY` / `NEXT_PUBLIC_CHECKOUT_URL_ANNUAL` and set `NEXT_PUBLIC_PRICE_MONTHLY` / `NEXT_PUBLIC_PRICE_ANNUAL` (defaults: $29/mo, $249/yr).

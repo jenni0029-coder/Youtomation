@@ -31,7 +31,7 @@ export async function POST(request) {
   }
 
   const code = request.headers.get("x-access-code") || "";
-  if (accessRequired && !isValidCode(code)) return fail("Please enter a valid access code.", 401);
+  if (accessRequired && !(await isValidCode(code))) return fail("Please enter a valid access code.", 401);
 
   let body;
   try {

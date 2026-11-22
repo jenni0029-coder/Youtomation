@@ -10,13 +10,31 @@ const FEATURES = [
   "Works on phone, tablet & desktop",
 ];
 
-export default function Pricing({ monthly, annual, monthlyUrl, annualUrl }) {
+export default function Pricing({ monthly, annual, monthlyUrl, annualUrl, paystack, currency = "$" }) {
   const [plan, setPlan] = useState("annual");
+  const [email, setEmail] = useState("");
+  const [askEmail, setAskEmail] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function checkout() {
+    if (!askEmail) return setAskEmail(true);
+    setBusy(true); setError("");
+    try {
+      const res = await fetch("/api/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, plan }) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) { window.location.href = data.url; return; }
+      setError(data.error || "Couldn't start checkout. Please try again.");
+    } catch {
+      setError("Couldn't reach the server. Check your connection.");
+    }
+    setBusy(false);
+  }
   const m = Number(monthly);
   const a = Number(annual);
   const savePct = m && a ? Math.round((1 - a / (m * 12)) * 100) : 0;
   const isAnnual = plan === "annual";
-  const fmt = (n) => "$" + (Number.isInteger(n) ? n : n.toFixed(2));
+  const fmt = (n) => currency + (Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
   const tab = (id, label) => (
     <button
@@ -49,9 +67,27 @@ export default function Pricing({ monthly, annual, monthlyUrl, annualUrl }) {
         <ul style={{ listStyle: "none", textAlign: "left", display: "flex", flexDirection: "column", gap: 9, marginBottom: 24, fontSize: 14, color: "#cbd5e1" }}>
           {FEATURES.map((f) => <li key={f}>✓ &nbsp;{f}</li>)}
         </ul>
-        <a href={isAnnual ? annualUrl : monthlyUrl} className="lp-btn lp-btn-primary" style={{ display: "block" }}>
-          {isAnnual ? `Get annual access — ${fmt(a)}/yr` : `Get monthly access — ${fmt(m)}/mo`}
-        </a>
+        {paystack ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {askEmail && (
+              <input
+                type="email" autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && email && checkout()}
+                placeholder="Your email (your receipt goes here)"
+                style={{ width: "100%", padding: "13px 14px", borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#f1f5f9", fontSize: 16, outline: "none" }}
+              />
+            )}
+            <button onClick={checkout} disabled={busy || (askEmail && !email)} className="lp-btn lp-btn-primary" style={{ display: "block", width: "100%", border: "none", cursor: busy ? "wait" : "pointer", opacity: askEmail && !email ? 0.6 : 1 }}>
+              {busy ? "Opening secure checkout…" : askEmail ? "Continue to payment →" : isAnnual ? `Get annual access — ${fmt(a)}/yr` : `Get monthly access — ${fmt(m)}/mo`}
+            </button>
+            {error && <div role="alert" style={{ color: "#fca5a5", fontSize: 13 }}>{error}</div>}
+            <div style={{ color: "#64748b", fontSize: 12 }}>Secure payment by Paystack · Visa, Mastercard, Verve & more</div>
+          </div>
+        ) : (
+          <a href={isAnnual ? annualUrl : monthlyUrl} className="lp-btn lp-btn-primary" style={{ display: "block" }}>
+            {isAnnual ? `Get annual access — ${fmt(a)}/yr` : `Get monthly access — ${fmt(m)}/mo`}
+          </a>
+        )}
       </div>
     </div>
   );
