@@ -1126,7 +1126,7 @@ function AccessGate({ checkoutUrl, onUnlock }) {
       <div style={{ width: "100%", maxWidth: 380, display: "flex", flexDirection: "column", gap: 14, textAlign: "center" }}>
         <div style={{ fontSize: 26, fontWeight: 900 }}>AutoTube<span style={{ color: "#00e87a" }}>AI</span></div>
         <div style={{ fontSize: 13, color: "#94a3b8" }}>Enter the access code from your purchase email.</div>
-        <TextInput value={code} onChange={(e) => setCode(e.target.value)} placeholder="Access code" onKeyDown={onEnter(submit)} autoFocus autoComplete="one-time-code" style={{ textAlign: "center", letterSpacing: 1 }} />
+        <TextInput value={code} onChange={(e) => setCode(e.target.value)} placeholder="Access code" onKeyDown={onEnter(submit)} autoFocus autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} style={{ textAlign: "center", letterSpacing: 1 }} />
         <ActionButton onClick={submit} loading={false} disabled={!code.trim() || busy} grad="linear-gradient(135deg,#00e87a,#38bdf8)">{busy ? "Checking…" : "Unlock"}</ActionButton>
         <ErrorBox error={error} />
         {checkoutUrl && <a href={checkoutUrl} style={{ fontSize: 13, color: "#00e87a", fontWeight: 700 }}>Don't have a code? Get access →</a>}
