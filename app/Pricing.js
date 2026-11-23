@@ -81,7 +81,7 @@ export default function Pricing({ monthly, annual, monthlyUrl, annualUrl, paysta
               {busy ? "Opening secure checkout…" : askEmail ? "Continue to payment →" : isAnnual ? `Get annual access — ${fmt(a)}/yr` : `Get monthly access — ${fmt(m)}/mo`}
             </button>
             {error && <div role="alert" style={{ color: "#fca5a5", fontSize: 13 }}>{error}</div>}
-            <div style={{ color: "#64748b", fontSize: 12 }}>Secure payment by Paystack · Visa, Mastercard, Verve & more</div>
+            <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.6 }}>Secure payment by Paystack · Visa, Mastercard, Verve & more<br />Renews automatically · cancel anytime in the app · <a href="/refund-policy" style={{ color: "#94a3b8" }}>no refunds</a></div>
           </div>
         ) : (
           <a href={isAnnual ? annualUrl : monthlyUrl} className="lp-btn lp-btn-primary" style={{ display: "block" }}>
