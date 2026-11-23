@@ -1,4 +1,4 @@
-import { accessRequired, isValidCode } from "@/lib/access";
+import { accessRequired, isValidCode, describeCode } from "@/lib/access";
 
 export const runtime = "nodejs";
 
@@ -11,5 +11,6 @@ export async function GET() {
 export async function POST(request) {
   const { code } = await request.json().catch(() => ({}));
   const valid = await isValidCode(typeof code === "string" ? code : "");
+  if (!valid) console.log("access denied:", describeCode(code));
   return Response.json({ valid }, { status: valid ? 200 : 401 });
 }
