@@ -1007,7 +1007,18 @@ function SubscriptionBox() {
   const [state, setState] = useState("idle"); // idle | confirm | busy | done
   const [msg, setMsg] = useState("");
   useEffect(() => setCode(store.code() || ""), []);
-  if (!/^ATAI-P/i.test(code)) return null;
+  if (!code) return null;
+  if (!/^ATAI-P/i.test(code)) {
+    return (
+      <div style={{ padding: "14px 16px", background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(255,255,255,0.08)", borderRadius: 18 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>💳 Subscription</div>
+        <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
+          You're signed in with a code that isn't linked to a paid subscription{/^OWNER/i.test(code) ? " (owner code)" : ""}, so there's nothing to cancel here.
+          To manage a subscription, sign out below and sign in with the <strong style={{ color: "#e2e8f0" }}>ATAI-P…</strong> code you received after paying.
+        </div>
+      </div>
+    );
+  }
 
   async function cancel() {
     setState("busy"); setMsg("");
