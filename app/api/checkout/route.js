@@ -1,4 +1,4 @@
-import { initializeCheckout, paystackEnabled, PLANS } from "@/lib/paystack";
+import { initializeCheckout, paystackEnabled, PLANS, PlanMismatchError } from "@/lib/paystack";
 
 export const runtime = "nodejs";
 
@@ -15,6 +15,9 @@ export async function POST(request) {
     return Response.json({ url: data.authorization_url });
   } catch (err) {
     console.error("checkout init failed", err.message);
+    if (err instanceof PlanMismatchError) {
+      return Response.json({ error: "Checkout is temporarily unavailable while we fix a pricing setting. Please try again later." }, { status: 503 });
+    }
     return Response.json({ error: "Couldn't start checkout. Please try again." }, { status: 502 });
   }
 }
