@@ -27,7 +27,7 @@ export default function Terms() {
       <h2>No guarantees</h2>
       <p>We do not guarantee views, subscribers, revenue or any other result. The service is provided "as is" without warranties of any kind.</p>
       <h2>Payments and refunds</h2>
-      <p>Prices and billing terms are shown at checkout. [Describe your refund policy here.]</p>
+      <p>Prices and billing terms are shown at checkout. Subscriptions renew automatically until cancelled. You can cancel at any time and keep access until the end of the period you have paid for. Payments are non-refundable except for charges made in error — see our <a href="/refund-policy" style={{ color: "#00e87a" }}>Refund &amp; Cancellation Policy</a>.</p>
       <h2>Limitation of liability</h2>
       <p>To the maximum extent permitted by law, {COMPANY} is not liable for indirect or consequential damages, and total liability is limited to the amount you paid in the 3 months before the claim.</p>
       <h2>Changes</h2>

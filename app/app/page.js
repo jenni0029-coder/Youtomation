@@ -1002,6 +1002,46 @@ function prettyJson(text) {
 // ---------------------------------------------------------------------------
 // SETTINGS
 // ---------------------------------------------------------------------------
+function SubscriptionBox() {
+  const [code, setCode] = useState("");
+  const [state, setState] = useState("idle"); // idle | confirm | busy | done
+  const [msg, setMsg] = useState("");
+  useEffect(() => setCode(store.code() || ""), []);
+  if (!/^ATAI-P/i.test(code)) return null;
+
+  async function cancel() {
+    setState("busy"); setMsg("");
+    try {
+      const res = await fetch("/api/billing/cancel", { method: "POST", headers: { "x-access-code": code } });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setState("confirm"); setMsg(d.error || "Couldn't cancel. Please try again."); return; }
+      const until = d.accessUntil ? new Date(d.accessUntil).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }) : null;
+      setState("done");
+      setMsg(d.alreadyCancelled && !d.cancelled ? "Your subscription was already cancelled." : "Subscription cancelled. You won't be charged again." + (until ? " You keep access until " + until + "." : " You keep access until the end of your paid period."));
+    } catch {
+      setState("confirm"); setMsg("Couldn't reach the server. Check your connection.");
+    }
+  }
+
+  return (
+    <div style={{ padding: "14px 16px", background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(255,255,255,0.08)", borderRadius: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 13, fontWeight: 800 }}>💳 Subscription</div>
+      <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>Your code: <span style={{ fontFamily: "ui-monospace,monospace", color: "#e2e8f0" }}>{code}</span></div>
+      {state === "idle" && <SmallButton onClick={() => setState("confirm")}>Cancel subscription</SmallButton>}
+      {(state === "confirm" || state === "busy") && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 12.5, color: "#fca5a5", lineHeight: 1.6 }}>Cancel your subscription? You won't be charged again and keep access until the end of the period you've paid for. Payments are non-refundable.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <SmallButton onClick={cancel}>{state === "busy" ? "Cancelling…" : "Yes, cancel"}</SmallButton>
+            <SmallButton onClick={() => { setState("idle"); setMsg(""); }}>Keep subscription</SmallButton>
+          </div>
+        </div>
+      )}
+      {msg && <div role="status" style={{ fontSize: 12.5, color: state === "done" ? "#00e87a" : "#fca5a5", lineHeight: 1.6 }}>{msg}</div>}
+    </div>
+  );
+}
+
 function SettingsScreen({ onClose, accessRequired }) {
   const [settings, setSettings] = useState(store.settings());
   const update = (s) => { setSettings(s); store.setSettings(s); };
@@ -1024,9 +1064,10 @@ function SettingsScreen({ onClose, accessRequired }) {
         </div>
       </div>
       <SmallButton onClick={() => { if (confirm("Delete all saved items and channel stats on this device?")) { store.setLibrary([]); store.setChannel(null); window.dispatchEvent(new Event("atai:library")); } }}>🗑 Clear saved data on this device</SmallButton>
+      <SubscriptionBox />
       {accessRequired && <SmallButton onClick={() => { store.setCode(""); window.dispatchEvent(new Event("atai:locked")); }}>🔒 Sign out (remove access code)</SmallButton>}
       <div style={{ fontSize: 11, color: "#475569", textAlign: "center" }}>
-        <a href="/terms" style={{ color: "#64748b" }}>Terms</a> · <a href="/privacy" style={{ color: "#64748b" }}>Privacy</a>
+        <a href="/terms" style={{ color: "#64748b" }}>Terms</a> · <a href="/privacy" style={{ color: "#64748b" }}>Privacy</a> · <a href="/refund-policy" style={{ color: "#64748b" }}>Refunds</a>
       </div>
     </Stack>
   );
